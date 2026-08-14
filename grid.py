@@ -1,4 +1,5 @@
 import random
+from collections import deque
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -324,7 +325,28 @@ class Grid:
 
     def generate_maze(self):
 
+        saved_start = self.start
+        saved_goal = self.goal
+
         self.clear_walls()
+
+        # Build the maze without start/goal affecting wall placement.
+        if saved_start is not None:
+
+            start_cell = self.get(*saved_start)
+
+            if start_cell is not None:
+                start_cell.state = CellState.EMPTY
+
+        if saved_goal is not None:
+
+            goal_cell = self.get(*saved_goal)
+
+            if goal_cell is not None:
+                goal_cell.state = CellState.EMPTY
+
+        self.start = None
+        self.goal = None
 
         def divide(x, y, width, height):
 
@@ -355,10 +377,7 @@ class Grid:
                         col
                     )
 
-                    if cell is not None and cell.state not in (
-                        CellState.START,
-                        CellState.GOAL
-                    ):
+                    if cell is not None:
                         cell.state = CellState.WALL
 
                 divide(
@@ -397,10 +416,7 @@ class Grid:
                         wall_x
                     )
 
-                    if cell is not None and cell.state not in (
-                        CellState.START,
-                        CellState.GOAL
-                    ):
+                    if cell is not None:
                         cell.state = CellState.WALL
 
                 divide(
@@ -423,3 +439,209 @@ class Grid:
             self.size,
             self.size
         )
+
+        extra_openings = random.randint(3, max(3, self.size // 3))
+        self._punch_extra_openings(extra_openings)
+        self._ensure_fully_connected()
+
+        self._restore_endpoint(saved_start, self.set_start)
+        self._restore_endpoint(saved_goal, self.set_goal)
+
+    def _is_walkable(self, cell):
+        return cell is not None and cell.state != CellState.WALL
+
+    def _open_cells(self):
+
+        positions = []
+
+        for row in range(self.size):
+
+            for col in range(self.size):
+
+                cell = self.get(row, col)
+
+                if self._is_walkable(cell):
+                    positions.append((row, col))
+
+        return positions
+
+    def _reachable_from(self, start):
+
+        frontier = deque([start])
+        seen = {start}
+
+        while frontier:
+
+            current = frontier.popleft()
+
+            for neighbor in self.neighbors(current[0], current[1]):
+
+                if not self._is_walkable(neighbor):
+                    continue
+
+                position = (neighbor.row, neighbor.col)
+
+                if position in seen:
+                    continue
+
+                seen.add(position)
+                frontier.append(position)
+
+        return seen
+
+    def is_fully_connected(self):
+        """True when every open cell belongs to one component."""
+
+        opens = self._open_cells()
+
+        if len(opens) <= 1:
+            return True
+
+        return len(self._reachable_from(opens[0])) == len(opens)
+
+    def _label_components(self):
+
+        labels = {}
+        next_id = 0
+
+        for position in self._open_cells():
+
+            if position in labels:
+                continue
+
+            frontier = deque([position])
+            labels[position] = next_id
+
+            while frontier:
+
+                current = frontier.popleft()
+
+                for neighbor in self.neighbors(current[0], current[1]):
+
+                    if not self._is_walkable(neighbor):
+                        continue
+
+                    npos = (neighbor.row, neighbor.col)
+
+                    if npos in labels:
+                        continue
+
+                    labels[npos] = next_id
+                    frontier.append(npos)
+
+            next_id += 1
+
+        return labels
+
+    def _find_bridge_wall(self):
+        """Return a wall separating two open components, if any."""
+
+        labels = self._label_components()
+
+        for row in range(self.size):
+
+            for col in range(self.size):
+
+                cell = self.get(row, col)
+
+                if cell is None or cell.state != CellState.WALL:
+                    continue
+
+                neighbor_components = set()
+
+                for neighbor in self.neighbors(row, col):
+
+                    if not self._is_walkable(neighbor):
+                        continue
+
+                    neighbor_components.add(
+                        labels[(neighbor.row, neighbor.col)]
+                    )
+
+                if len(neighbor_components) >= 2:
+                    return (row, col)
+
+        return None
+
+    def _ensure_fully_connected(self):
+        """Remove walls until every open cell can reach every other."""
+
+        while not self.is_fully_connected():
+
+            bridge = self._find_bridge_wall()
+
+            if bridge is not None:
+
+                cell = self.get(*bridge)
+
+                if cell is not None:
+                    cell.state = CellState.EMPTY
+                continue
+
+            self._punch_extra_openings(1)
+
+    def _restore_endpoint(self, position, setter):
+
+        if position is None:
+            return
+
+        cell = self.get(*position)
+
+        if cell is not None and cell.state == CellState.WALL:
+            cell.state = CellState.EMPTY
+
+        setter(*position)
+
+    def has_path(self, start, goal):
+        """True when goal is reachable from start through non-wall cells."""
+
+        if start is None or goal is None:
+            return False
+
+        frontier = deque([start])
+        seen = {start}
+
+        while frontier:
+
+            current = frontier.popleft()
+
+            if current == goal:
+                return True
+
+            for neighbor in self.neighbors(current[0], current[1]):
+
+                position = (neighbor.row, neighbor.col)
+
+                if (
+                    neighbor.state == CellState.WALL
+                    or position in seen
+                ):
+                    continue
+
+                seen.add(position)
+                frontier.append(position)
+
+        return False
+
+    def _punch_extra_openings(self, count):
+        """Remove random walls to add alternate routes through the maze."""
+
+        walls = []
+
+        for row in range(self.size):
+
+            for col in range(self.size):
+
+                cell = self.get(row, col)
+
+                if cell is not None and cell.state == CellState.WALL:
+                    walls.append((row, col))
+
+        random.shuffle(walls)
+
+        for row, col in walls[:count]:
+
+            cell = self.get(row, col)
+
+            if cell is not None:
+                cell.state = CellState.EMPTY

@@ -30,6 +30,7 @@ MIN_WINDOW_WIDTH = 900
 MIN_WINDOW_HEIGHT = 720
 
 FPS = 60
+INSTANT_SPEED = 61
 
 screen = pygame.display.set_mode(
     (INITIAL_WIDTH, INITIAL_HEIGHT),
@@ -82,7 +83,6 @@ MODE_COLORS = {
 
 FONT = pygame.font.SysFont("consolas", 17)
 SMALL_FONT = pygame.font.SysFont("consolas", 14)
-GLYPH_FONT = pygame.font.SysFont("consolas", 14, bold=True)
 TITLE_FONT = pygame.font.SysFont("consolas", 27, bold=True)
 SECTION_FONT = pygame.font.SysFont("consolas", 19, bold=True)
 
@@ -440,7 +440,7 @@ class Button:
 # ============================================================
 
 class Slider:
-    """A horizontal steps-per-frame slider."""
+    """Horizontal speed slider: 1–60 steps per frame, 61 = instant."""
 
     def __init__(self, low=1, high=500, value=8):
 
@@ -627,7 +627,7 @@ class Application:
         self.mouse_drawing = False
         self.mouse_erasing = False
 
-        self.slider = Slider(low=1, high=500, value=8)
+        self.slider = Slider(low=1, high=INSTANT_SPEED, value=8)
 
         self.show_help = False
 
@@ -777,32 +777,22 @@ class Application:
 
         return self.get_layout()["grid_rect"]
 
+    def _grid_boundary(self, start, span, index):
+        """Pixel boundary that partitions span into grid.size slices."""
+
+        return start + (index * span) // self.grid.size
+
     def cell_rect(self, row, col):
 
         grid = self.get_actual_grid_rect()
+        size = self.grid.size
 
-        # Calculate boundaries independently instead of using
-        # a rounded cell_size repeatedly. This prevents the
-        # cumulative rounding errors that create small gaps
-        # every few cells.
+        left = self._grid_boundary(grid.left, grid.width, col)
+        right = self._grid_boundary(grid.left, grid.width, col + 1)
+        top = self._grid_boundary(grid.top, grid.height, row)
+        bottom = self._grid_boundary(grid.top, grid.height, row + 1)
 
-        left = grid.left + col * grid.width / self.grid.size
-        right = (
-            grid.left
-            + (col + 1) * grid.width / self.grid.size
-        )
-        top = grid.top + row * grid.height / self.grid.size
-        bottom = (
-            grid.top
-            + (row + 1) * grid.height / self.grid.size
-        )
-
-        return pygame.Rect(
-            round(left),
-            round(top),
-            round(right - left),
-            round(bottom - top)
-        )
+        return pygame.Rect(left, top, right - left, bottom - top)
 
     # ========================================================
     # ACTIONS
@@ -1069,32 +1059,6 @@ class Application:
                     rect
                 )
 
-                # Colorblind-safe glyphs on Start / Goal
-                # cells, when the cell is large enough.
-                if rect.width >= 15:
-
-                    if cell.state == CellState.START:
-                        glyph = GLYPH_FONT.render(
-                            "S",
-                            True,
-                            (255, 255, 255)
-                        )
-                        screen.blit(
-                            glyph,
-                            glyph.get_rect(center=rect.center)
-                        )
-
-                    elif cell.state == CellState.GOAL:
-                        glyph = GLYPH_FONT.render(
-                            "G",
-                            True,
-                            (255, 255, 255)
-                        )
-                        screen.blit(
-                            glyph,
-                            glyph.get_rect(center=rect.center)
-                        )
-
         # Current-node highlight ring (only while active).
         if self.visualizer.running and self.visualizer.current:
 
@@ -1111,15 +1075,8 @@ class Application:
         # Draw grid lines as complete boundaries, once.
         for index in range(self.grid.size + 1):
 
-            x = round(
-                grid.left
-                + index * grid.width / self.grid.size
-            )
-
-            y = round(
-                grid.top
-                + index * grid.height / self.grid.size
-            )
+            x = self._grid_boundary(grid.left, grid.width, index)
+            y = self._grid_boundary(grid.top, grid.height, index)
 
             pygame.draw.line(
                 screen,
@@ -1403,8 +1360,13 @@ class Application:
         self.draw_section_title("SPEED", x, y)
         y += SECTION_TITLE_PAD
 
+        if self.slider.value >= INSTANT_SPEED:
+            speed_text = "Instant"
+        else:
+            speed_text = f"{self.slider.value} steps / frame"
+
         label = SMALL_FONT.render(
-            f"{self.slider.value} steps / frame",
+            speed_text,
             True,
             TEXT
         )
@@ -1872,10 +1834,14 @@ class Application:
         v = self.visualizer
 
         if v.running and not v.paused and not v.finished:
-            for _ in range(self.slider.value):
-                if not v.running or v.finished:
-                    break
-                v.step()
+            if self.slider.value >= INSTANT_SPEED:
+                while v.running and not v.finished:
+                    v.step()
+            else:
+                for _ in range(self.slider.value):
+                    if not v.running or v.finished:
+                        break
+                    v.step()
 
         # Surface a "not implemented" notice if a scaffold
         # algorithm was just run.
