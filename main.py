@@ -881,9 +881,17 @@ class Application:
         self.set_toast("Grid reset", MUTED_TEXT)
 
     def change_grid_size(self, delta):
+        valid_sizes = [15, 25, 35, 45]
+        try:
+            curr_idx = valid_sizes.index(self.grid.size)
+        except ValueError:
+            curr_idx = 1
+
+        new_idx = max(0, min(len(valid_sizes) - 1, curr_idx + (1 if delta > 0 else -1)))
+        new_size = valid_sizes[new_idx]
 
         self.visualizer.reset()
-        self.grid.reset(self.grid.size + delta)
+        self.grid.reset(new_size)
         self.set_toast(
             f"Grid: {self.grid.size}x{self.grid.size}",
             MUTED_TEXT
@@ -1737,11 +1745,11 @@ class Application:
             elif event.key == pygame.K_SPACE:
                 self.toggle_pause()
 
-            elif event.key == pygame.K_EQUALS:
-                self.change_grid_size(5)
+            elif event.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+                self.change_grid_size(1)
 
-            elif event.key == pygame.K_MINUS:
-                self.change_grid_size(-5)
+            elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+                self.change_grid_size(-1)
 
             elif event.key == pygame.K_TAB:
                 if event.mod & pygame.KMOD_SHIFT:

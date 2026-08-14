@@ -9,8 +9,8 @@ from enum import Enum, auto
 # ============================================================
 
 DEFAULT_GRID_SIZE = 25
-MIN_GRID_SIZE = 10
-MAX_GRID_SIZE = 50
+MIN_GRID_SIZE = 15
+MAX_GRID_SIZE = 45
 
 
 # ============================================================
@@ -113,11 +113,14 @@ class Grid:
 
     def reset(self, size=None):
 
+        valid_sizes = [15, 25, 35, 45]
         if size is not None:
-            self.size = max(
-                MIN_GRID_SIZE,
-                min(MAX_GRID_SIZE, size)
-            )
+            if size in valid_sizes:
+                self.size = size
+            else:
+                self.size = min(valid_sizes, key=lambda x: abs(x - size))
+        elif self.size not in valid_sizes:
+            self.size = DEFAULT_GRID_SIZE
 
         self.cells = [
             [
@@ -324,124 +327,79 @@ class Grid:
                     cell.state = CellState.WALL
 
     def generate_maze(self):
-
         saved_start = self.start
         saved_goal = self.goal
 
         self.clear_walls()
 
-        # Build the maze without start/goal affecting wall placement.
-        if saved_start is not None:
+        # Fill entire grid with walls first
+        for row in range(self.size):
+            for col in range(self.size):
+                cell = self.get(row, col)
+                if cell is not None:
+                    cell.state = CellState.WALL
 
-            start_cell = self.get(*saved_start)
+        # Carve passages using Randomized DFS (Recursive Backtracker)
+        # Guarantees strictly 1-cell wide corridors and 1-cell thick walls (no double-wide roads).
+        start_r, start_c = 1, 1
+        if start_r >= self.size:
+            start_r = 0
+        if start_c >= self.size:
+            start_c = 0
 
-            if start_cell is not None:
-                start_cell.state = CellState.EMPTY
+        cell = self.get(start_r, start_c)
+        if cell is not None:
+            cell.state = CellState.EMPTY
 
-        if saved_goal is not None:
+        stack = [(start_r, start_c)]
 
-            goal_cell = self.get(*saved_goal)
+        while stack:
+            r, c = stack[-1]
+            neighbors = []
+            for dr, dc in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < self.size and 0 <= nc < self.size:
+                    n_cell = self.get(nr, nc)
+                    if n_cell is not None and n_cell.state == CellState.WALL:
+                        neighbors.append((nr, nc, r + dr // 2, c + dc // 2))
 
-            if goal_cell is not None:
-                goal_cell.state = CellState.EMPTY
-
-        self.start = None
-        self.goal = None
-
-        def divide(x, y, width, height):
-
-            if width < 3 or height < 3:
-                return
-
-            horizontal = width < height
-
-            if horizontal:
-
-                wall_y = (
-                    y +
-                    random.randrange(1, height - 1)
-                )
-
-                opening_x = (
-                    x +
-                    random.randrange(width)
-                )
-
-                for col in range(x, x + width):
-
-                    if col == opening_x:
-                        continue
-
-                    cell = self.get(
-                        wall_y,
-                        col
-                    )
-
-                    if cell is not None:
-                        cell.state = CellState.WALL
-
-                divide(
-                    x,
-                    y,
-                    width,
-                    wall_y - y
-                )
-
-                divide(
-                    x,
-                    wall_y + 1,
-                    width,
-                    y + height - wall_y - 1
-                )
-
+            if neighbors:
+                nr, nc, wr, wc = random.choice(neighbors)
+                w_cell = self.get(wr, wc)
+                n_cell = self.get(nr, nc)
+                if w_cell is not None:
+                    w_cell.state = CellState.EMPTY
+                if n_cell is not None:
+                    n_cell.state = CellState.EMPTY
+                stack.append((nr, nc))
             else:
+                stack.pop()
 
-                wall_x = (
-                    x +
-                    random.randrange(1, width - 1)
-                )
+        # Add multiple paths (braiding) by opening some internal separating walls
+        # to create loops and alternative routes without creating 2x2 open blocks.
+        internal_walls = []
+        for r in range(1, self.size - 1):
+            for c in range(1, self.size - 1):
+                cell = self.get(r, c)
+                if cell is not None and cell.state == CellState.WALL:
+                    top = self.get(r - 1, c)
+                    bottom = self.get(r + 1, c)
+                    left = self.get(r, c - 1)
+                    right = self.get(r, c + 1)
 
-                opening_y = (
-                    y +
-                    random.randrange(height)
-                )
+                    is_h = (top and top.state == CellState.EMPTY) and (bottom and bottom.state == CellState.EMPTY) and not ((left and left.state == CellState.EMPTY) and (right and right.state == CellState.EMPTY))
+                    is_v = (left and left.state == CellState.EMPTY) and (right and right.state == CellState.EMPTY) and not ((top and top.state == CellState.EMPTY) and (bottom and bottom.state == CellState.EMPTY))
 
-                for row in range(y, y + height):
+                    if is_h or is_v:
+                        internal_walls.append((r, c))
 
-                    if row == opening_y:
-                        continue
+        random.shuffle(internal_walls)
+        extra_count = int(len(internal_walls) * 0.3)  # 30% braiding for multiple paths
+        for r, c in internal_walls[:extra_count]:
+            w_cell = self.get(r, c)
+            if w_cell is not None:
+                w_cell.state = CellState.EMPTY
 
-                    cell = self.get(
-                        row,
-                        wall_x
-                    )
-
-                    if cell is not None:
-                        cell.state = CellState.WALL
-
-                divide(
-                    x,
-                    y,
-                    wall_x - x,
-                    height
-                )
-
-                divide(
-                    wall_x + 1,
-                    y,
-                    x + width - wall_x - 1,
-                    height
-                )
-
-        divide(
-            0,
-            0,
-            self.size,
-            self.size
-        )
-
-        extra_openings = random.randint(3, max(3, self.size // 3))
-        self._punch_extra_openings(extra_openings)
         self._ensure_fully_connected()
 
         self._restore_endpoint(saved_start, self.set_start)
