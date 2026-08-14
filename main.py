@@ -23,11 +23,11 @@ pygame.init()
 # WINDOW SETTINGS
 # ============================================================
 
-INITIAL_WIDTH = 1280
-INITIAL_HEIGHT = 800
+INITIAL_WIDTH = 1180
+INITIAL_HEIGHT = 740
 
-MIN_WINDOW_WIDTH = 900
-MIN_WINDOW_HEIGHT = 720
+MIN_WINDOW_WIDTH = 950
+MIN_WINDOW_HEIGHT = 680
 
 FPS = 60
 INSTANT_SPEED = 61
@@ -37,10 +37,43 @@ screen = pygame.display.set_mode(
     pygame.RESIZABLE
 )
 
-pygame.display.set_caption("Grid World Search")
+pygame.display.set_caption("SearchLabs")
 
 clock = pygame.time.Clock()
 
+
+
+# ============================================================
+# THEMES
+# ============================================================
+
+DARK_THEME = {
+    "BG": (22, 24, 29),
+    "PANEL": (30, 33, 40),
+    "GRID_BACKGROUND": (236, 240, 246),
+    "GRID_LINE": (65, 69, 78),
+    "WALL": (35, 38, 44),
+    "TEXT": (235, 237, 240),
+    "MUTED_TEXT": (160, 165, 175),
+    "ACCENT": (85, 150, 235),
+    "BUTTON": (55, 60, 70),
+    "BUTTON_HOVER": (70, 76, 88),
+    "SLIDER_TRACK": (45, 50, 58),
+}
+
+LIGHT_THEME = {
+    "BG": (245, 247, 250),
+    "PANEL": (255, 255, 255),
+    "GRID_BACKGROUND": (255, 255, 255),
+    "GRID_LINE": (210, 215, 225),
+    "WALL": (190, 195, 205),
+    "TEXT": (30, 33, 40),
+    "MUTED_TEXT": (100, 105, 115),
+    "ACCENT": (40, 110, 200),
+    "BUTTON": (225, 230, 238),
+    "BUTTON_HOVER": (210, 216, 226),
+    "SLIDER_TRACK": (200, 205, 215),
+}
 
 # ============================================================
 # COLORS
@@ -62,7 +95,7 @@ PATH = (170, 100, 220)
 
 TEXT = (235, 237, 240)
 MUTED_TEXT = (160, 165, 175)
-ACCENT = (85, 150, 235)
+ACCENT = (150, 204, 255)
 
 BUTTON = (55, 60, 70)
 BUTTON_HOVER = (70, 76, 88)
@@ -92,8 +125,8 @@ SECTION_FONT = pygame.font.SysFont("consolas", 19, bold=True)
 # ============================================================
 
 TOP_PAD = 20
-SECTION_GAP = 14
-SECTION_TITLE_PAD = 26
+SECTION_GAP = 8
+SECTION_TITLE_PAD = 20
 LINE_GAP = 18
 BUTTON_HEIGHT = 28
 BUTTON_GAP = 6
@@ -622,6 +655,8 @@ class Application:
 
         self.visualizer.algorithm = self.selected_algorithm
 
+        self.dark_mode = True
+        self.apply_theme()
         self.edit_mode = "wall"
 
         self.mouse_drawing = False
@@ -1011,18 +1046,86 @@ class Application:
 
         pygame.display.flip()
 
+
+    def toggle_theme(self):
+        self.dark_mode = not self.dark_mode
+        self.apply_theme()
+        self.set_toast(f"Theme: {'Dark' if self.dark_mode else 'Light'}", ACCENT)
+
+    def apply_theme(self):
+        theme = DARK_THEME if self.dark_mode else LIGHT_THEME
+        global BG, PANEL, GRID_BACKGROUND, GRID_LINE, WALL, TEXT, MUTED_TEXT, ACCENT, BUTTON, BUTTON_HOVER, SLIDER_TRACK, TOAST_TEXT_COLOR, MODE_COLORS
+        BG = theme["BG"]
+        PANEL = theme["PANEL"]
+        GRID_BACKGROUND = theme["GRID_BACKGROUND"]
+        GRID_LINE = theme["GRID_LINE"]
+        WALL = theme["WALL"]
+        TEXT = theme["TEXT"]
+        MUTED_TEXT = theme["MUTED_TEXT"]
+        ACCENT = theme["ACCENT"]
+        BUTTON = theme["BUTTON"]
+        BUTTON_HOVER = theme["BUTTON_HOVER"]
+        SLIDER_TRACK = theme["SLIDER_TRACK"]
+        TOAST_TEXT_COLOR = TEXT
+        MODE_COLORS = {
+            "wall": (130, 138, 155) if self.dark_mode else (155, 165, 180),
+            "start": (70, 205, 115) if self.dark_mode else (50, 160, 90),
+            "goal": (235, 85, 85) if self.dark_mode else (210, 60, 60),
+            "erase": (155, 120, 190) if self.dark_mode else (135, 100, 170),
+        }
+
     def draw_header(self):
 
         title = TITLE_FONT.render(
-            "GRID WORLD SEARCH",
+            "SearchLabs",
             True,
             TEXT
         )
 
         screen.blit(title, (24, 20))
 
+        # Theme toggle button (circle with sun/moon icon) beside title
+        title_width = title.get_width()
+        toggle_x = 24 + title_width + 20
+        toggle_y = 20 + title.get_height() // 2
+        toggle_radius = 14
+        self.theme_button_rect = pygame.Rect(
+            toggle_x - toggle_radius,
+            toggle_y - toggle_radius,
+            toggle_radius * 2,
+            toggle_radius * 2
+        )
+
+        mouse_pos = pygame.mouse.get_pos()
+        hovered = self.theme_button_rect.collidepoint(mouse_pos)
+        btn_color = BUTTON_HOVER if hovered else BUTTON
+
+        pygame.draw.circle(screen, btn_color, (toggle_x, toggle_y), toggle_radius)
+
+        if self.dark_mode:
+            # Draw Crescent Moon icon: pale blue circle with button-color cutout
+            moon_color = (110, 160, 230)
+            pygame.draw.circle(screen, moon_color, (toggle_x, toggle_y), 7)
+            pygame.draw.circle(screen, btn_color, (toggle_x + 3, toggle_y - 2), 6)            
+        else:
+            # Draw Sun icon: golden center circle with 4 small ray dots
+            sun_color = (255, 215, 60)
+            pygame.draw.circle(screen, sun_color, (toggle_x, toggle_y), 5)
+            for dx, dy in [
+                (-8, 0), (8, 0),
+                (0, -8), (0, 8),
+                (-6, -6), (6, -6),
+                (-6, 6), (6, 6)
+            ]:
+                pygame.draw.circle(
+                    screen,
+                    sun_color,
+                    (toggle_x + dx, toggle_y + dy),
+                    1.5
+                )         
+
         subtitle = SMALL_FONT.render(
-            "Interactive search algorithm laboratory",
+            "Interactive visual search algorithm laboratory",
             True,
             MUTED_TEXT
         )
@@ -1311,7 +1414,7 @@ class Application:
 
             cursor_x += pill_width + pill_gap
 
-        y = pills_y + pill_height
+        y = pills_y + pill_height + 6
 
         # "[Tab] cycle" hint beneath the pills.
         if len(self.algorithms) > 1:
@@ -1648,9 +1751,10 @@ class Application:
             pygame.SRCALPHA
         )
 
+        toast_bg = (30, 34, 42) if self.dark_mode else (250, 252, 255)
         pygame.draw.rect(
             toast_surf,
-            (24, 26, 32),
+            toast_bg,
             toast_surf.get_rect(),
             border_radius=8
         )
@@ -1683,15 +1787,22 @@ class Application:
 
     def handle_event(self, event):
 
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if hasattr(self, 'theme_button_rect') and self.theme_button_rect.collidepoint(event.pos):
+                self.toggle_theme()
+                return
+
         if event.type == pygame.VIDEORESIZE:
 
             width = max(MIN_WINDOW_WIDTH, event.w)
             height = max(MIN_WINDOW_HEIGHT, event.h)
 
-            pygame.display.set_mode(
-                (width, height),
-                pygame.RESIZABLE
-            )
+            cur_w, cur_h = screen.get_size()
+            if width != cur_w or height != cur_h:
+                pygame.display.set_mode(
+                    (width, height),
+                    pygame.RESIZABLE
+                )
 
             return
 
