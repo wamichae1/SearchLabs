@@ -23,10 +23,10 @@ pygame.init()
 # WINDOW SETTINGS
 # ============================================================
 
-INITIAL_WIDTH = 1180
+INITIAL_WIDTH = 1280
 INITIAL_HEIGHT = 740
 
-MIN_WINDOW_WIDTH = 950
+MIN_WINDOW_WIDTH = 1280
 MIN_WINDOW_HEIGHT = 680
 
 FPS = 60
@@ -661,6 +661,7 @@ class Application:
 
         self.mouse_drawing = False
         self.mouse_erasing = False
+        self._last_weight_cell = None
 
         self.slider = Slider(low=1, high=INSTANT_SPEED, value=8)
 
@@ -679,9 +680,10 @@ class Application:
 
         self.utility_buttons = [
             Button("Random Walls", self.random_walls),
+            Button("Random Weights", self.random_weights),
             Button("Generate Maze", self.generate_maze),
             Button("Clear Walls", self.clear_walls),
-            Button("Rnd S/G", self.randomize_start_goal),
+            Button("Random Start/Goal", self.randomize_start_goal),
             Button("Reset Grid", self.reset_grid)
         ]
 
@@ -909,6 +911,11 @@ class Application:
         self.grid.randomize_start_goal()
         self.set_toast("Start / Goal randomized", MUTED_TEXT)
 
+
+    def random_weights(self):
+        self.grid.generate_random_weights(density=0.25)
+        self.set_toast("Random weights scattered", MUTED_TEXT)
+
     def reset_grid(self):
 
         self.visualizer.reset()
@@ -1004,6 +1011,14 @@ class Application:
             if cell.state == CellState.WALL:
                 cell.state = CellState.EMPTY
 
+        elif self.edit_mode == "weight":
+            if cell.state == CellState.EMPTY:
+                current_time = time.perf_counter()
+                if self._last_weight_cell != (row, col) or (current_time - getattr(self, '_last_weight_time', 0) > 0.2):
+                    self.grid.cycle_weight(row, col)
+                    self._last_weight_cell = (row, col)
+                    self._last_weight_time = current_time
+
     def erase_wall_at(self, position):
 
         if self.visualizer.running:
@@ -1072,6 +1087,7 @@ class Application:
             "start": (70, 205, 115) if self.dark_mode else (50, 160, 90),
             "goal": (235, 85, 85) if self.dark_mode else (210, 60, 60),
             "erase": (155, 120, 190) if self.dark_mode else (135, 100, 170),
+            "weight": (120, 165, 210) if self.dark_mode else (80, 130, 185),
         }
 
     def draw_header(self):
@@ -1132,10 +1148,25 @@ class Application:
 
         screen.blit(subtitle, (24, 51))
 
-    def cell_color(self, state):
+    def cell_color(self, cell):
+
+        if cell.state == CellState.EMPTY:
+            if cell.weight == 1:
+                return GRID_BACKGROUND
+            if self.dark_mode:
+                shades = {
+                    2: (50, 90, 150),
+                    3: (65, 110, 185),
+                    4: (80, 130, 215),
+                    5: (95, 150, 245)
+                }
+                return shades.get(cell.weight, (50, 90, 150))
+            else:
+                base_r, base_g, base_b = 210, 228, 252
+                tint_step = (cell.weight - 2) * 16
+                return (max(0, base_r - tint_step), max(0, base_g - tint_step), base_b)
 
         return {
-            CellState.EMPTY: GRID_BACKGROUND,
             CellState.WALL: WALL,
             CellState.START: START,
             CellState.GOAL: GOAL,
@@ -1143,7 +1174,7 @@ class Application:
             CellState.CURRENT: CURRENT,
             CellState.VISITED: VISITED,
             CellState.PATH: PATH
-        }[state]
+        }[cell.state]
 
     def draw_grid(self):
 
@@ -1166,9 +1197,18 @@ class Application:
 
                 pygame.draw.rect(
                     screen,
-                    self.cell_color(cell.state),
+                    self.cell_color(cell),
                     rect
                 )
+
+                if cell.state == CellState.EMPTY and cell.weight > 1:
+                    text_col = (230, 235, 245) if self.dark_mode else (40, 60, 90)
+                    weight_surf = SMALL_FONT.render(str(cell.weight), True, text_col)
+                    if rect.width > 14 and rect.height > 14:
+                        screen.blit(
+                            weight_surf,
+                            weight_surf.get_rect(center=rect.center)
+                        )
 
         # Current-node highlight ring (only while active).
         if self.visualizer.running and self.visualizer.current:
@@ -1561,11 +1601,12 @@ class Application:
 
         line_1 = (
             "[1] Wall    [2] Start    "
-            "[3] Goal    [4] Erase"
+            "[3] Goal    [4] Erase    "
+            "[5] Weights"
         )
 
         line_2 = (
-            "[Space] Pause    [Tab] Algo    "
+            "[Space] Pause    [Tab] Algorithm    "
             "[+/-] Grid    [H] Help    [Esc] Quit"
         )
 
@@ -1674,7 +1715,7 @@ class Application:
             ),
             (
                 "Other",
-                "[H] Toggle this help  [Esc] Quit"
+                "[H] help Menu  [Esc] Quit"
             )
         ]
 
@@ -1843,6 +1884,9 @@ class Application:
 
             elif event.key == pygame.K_4:
                 self.set_edit_mode("erase")
+
+            elif event.key == pygame.K_5:
+                self.set_edit_mode("weight")
 
             elif event.key == pygame.K_r:
                 self.reset_search()

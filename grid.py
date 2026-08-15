@@ -90,10 +90,12 @@ class Finished:
 # ============================================================
 
 @dataclass
+@dataclass
 class Cell:
     row: int
     col: int
     state: CellState = CellState.EMPTY
+    weight: int = 1
 
 
 # ============================================================
@@ -229,6 +231,26 @@ class Grid:
 
         cell.state = CellState.GOAL
         self.goal = (row, col)
+
+
+    def clear_weights(self):
+        for row in self.cells:
+            for cell in row:
+                cell.weight = 1
+
+    def cycle_weight(self, row, col):
+        cell = self.get(row, col)
+        if cell is not None and cell.state == CellState.EMPTY:
+            cell.weight = (cell.weight % 5) + 1
+
+    def generate_random_weights(self, density=0.25):
+        for row in self.cells:
+            for cell in row:
+                if cell.state == CellState.EMPTY:
+                    if random.random() < density:
+                        cell.weight = random.randint(2, 5)
+                    else:
+                        cell.weight = 1
 
     def clear_walls(self):
 
