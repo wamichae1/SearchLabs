@@ -40,7 +40,7 @@ def bfs(grid, start, goal):
 
         # Announce the node we are expanding now.
         yield Current(current[0], current[1])
-
+        # Check if Node is the Goal
         if current == goal:
 
             path = []
@@ -51,7 +51,7 @@ def bfs(grid, start, goal):
                 node = came_from[node]
 
             path.reverse()
-
+            #Draw out the path from start to goal
             for cell in path:
                 yield PathNode(cell[0], cell[1])
 
