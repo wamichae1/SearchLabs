@@ -7,10 +7,10 @@ SearchLabs is an interactive, real-time pathfinding algorithm visualizer built w
 ## Key Features
 
 - **Multiple Algorithms**: Compare BFS, DFS, Dijkstra, A*, and Greedy Best-First Search side-by-side.
-- **Braided Multi-Path Mazes**: Generate complex mazes with multiple alternative paths and loops (avoiding single-solution bottlenecks so sub-optimal algorithms like DFS and Greedy can take different routes).
+- **Braided Multi-Path Mazes**: Generate mazes with multiple alternative paths and loops (avoiding single-solution bottlenecks so sub-optimal algorithms like DFS and Greedy can take different routes).
 - **Weighted Terrain (1–5)**: Paint terrain weights (2–5) with blue gradient shading and clear center-rendered numbers. Dijkstra, A*, and Greedy factor terrain weights into path cost calculations.
 - **Dark & Light Modes**: Instantly toggle between Dark and Light themes via the header icon button.
-- **Adjustable Grid Sizes**: Seamlessly resize grids (15x15, 25x25, 35x35, 45x45) tailored for optimal layout fit.
+- **Adjustable Grid Sizes**: Resize grids (15x15, 25x25, 35x35, 45x45).
 - **Interactive Controls**: Click and drag to draw walls, place Start/Goal nodes, scatter random walls or weights, adjust playback speed, and pause/step search execution.
 
 ---
@@ -116,12 +116,12 @@ To add your algorithm to the UI selector in `main.py`:
 2. Register it in `self.algorithms` list inside `Application.__init__`:
    ```python
    Algorithm(
-       "MY",                  # Keyboard shortcut key / pill label
+       "MY",                  # button label
        "My Custom Algorithm", # Full title
        my_algorithm,          # Generator function reference
        "Description of strategy...",
        "Data structure...",
-       "Complexity...",
+       "Time/Space Complexity...",
        "Optimal: Yes/No"
    )
    ```

@@ -35,8 +35,13 @@ YOUR JOB
   picks DFS up automatically once it yields real events.
 """
 
-from grid import Finished
-
+from grid import (
+    CellState,
+    Current,
+    Discover,
+    PathNode,
+    Finished,
+)
 
 def dfs(grid, start, goal):
 
@@ -44,39 +49,43 @@ def dfs(grid, start, goal):
         yield Finished(found=False)
         return
 
-    # TODO: implement. Sketch (see bfs.py for the worked
-    # version of every step below):
-    #
-    # came_from = {start: None}
-    # frontier = []                       # a stack (LIFO)
-    #
-    # while frontier:
-    #     current = frontier.pop()        # newest first
-    #     yield Current(current[0], current[1])
-    #
-    #     if current == goal:
-    #         path = []
-    #         node = goal
-    #         while node is not None:
-    #             path.append(node)
-    #             node = came_from[node]
-    #         path.reverse()
-    #         for cell in path:
-    #             yield PathNode(cell[0], cell[1])
-    #         yield Finished(found=True)
-    #         return
-    #
-    #     for neighbor in grid.neighbors(current[0], current[1]):
-    #         if neighbor.state == CellState.WALL:
-    #             continue
-    #         pos = (neighbor.row, neighbor.col)
-    #         if pos not in came_from:
-    #             came_from[pos] = current
-    #             frontier.append(pos)
-    #             yield Discover(pos[0], pos[1])
-    #
-    # yield Finished(found=False)
+    came_from = {start: None}
 
-    raise NotImplementedError(
-        "DFS is not implemented yet — fill in dfs.py"
-    )
+    frontier = [start]
+
+    while frontier:
+
+        current  = frontier.pop()
+        # Annouce the node expanding
+        yield Current(current[0],current[1])
+        # Check if node is the goal
+        if current  == goal:
+
+            path = []
+            node = goal
+
+            while node is not None:
+                path.append(node)
+                node = came_from[node]
+
+            path.reverse()
+            # Draw out the path from start to goal
+            for cell in path:
+                yield PathNode(cell[0], cell[1])
+
+            yield Finished(found=True)
+            return
+
+        for neighbor in grid.neighbors(current[0], current[1]):
+            position = (neighbor.row, neighbor.col)
+
+            if neighbor.state == CellState.WALL:
+                continue
+
+            if position not in came_from:
+                came_from[position] = current
+                frontier.append(position)
+                yield Discover(position[0], position[1])
+            
+    # Frontier exhausted without reaching the goal.
+    yield Finished(found=False)

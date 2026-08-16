@@ -51,7 +51,7 @@ def bfs(grid, start, goal):
                 node = came_from[node]
 
             path.reverse()
-            #Draw out the path from start to goal
+            # Draw out the path from start to goal
             for cell in path:
                 yield PathNode(cell[0], cell[1])
 
