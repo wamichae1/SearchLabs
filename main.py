@@ -16,6 +16,8 @@ from dfs import dfs
 from dijkstra import dijkstra
 from astar import astar
 from greedy import greedy
+from bidirectional import bidirectional
+from thetastar import thetastar
 
 pygame.init()
 
@@ -644,6 +646,24 @@ class Application:
                 "Data structure: Priority queue (min-heap)",
                 "O((V + E) log V) time   |   O(V) space",
                 "Optimal: No"
+            ),
+            Algorithm(
+                "BI",
+                "Bidirectional Search",
+                bidirectional,
+                "Searches simultaneously from start and goal.",
+                "Data structure: Two Queues / Bidirectional",
+                "O(b^(d/2)) time   |   O(b^(d/2)) space",
+                "Optimal: Yes (unweighted)"
+            ),
+            Algorithm(
+                "TH",
+                "Theta* Search",
+                thetastar,
+                "Any-angle pathfinding using line-of-sight.",
+                "Data structure: Priority Queue (A* variant)",
+                "O(V log V) time   |   O(V) space",
+                "Optimal: Any-angle shortest path"
             )
         ]
 
@@ -1394,69 +1414,41 @@ class Application:
         self.draw_section_title("ALGORITHM", x, y)
         y += SECTION_TITLE_PAD
 
-        # Selector pills, wrapping to a new row if they ever
-        # exceed the panel width (so adding many algorithms
-        # later never overflows).
-        self.algorithm_pills = []
+        # Cyclical Carousel Selector: [ ? ]  Algorithm Name  [ ? ]
+        carousel_h = 32
+        arrow_w = 32
 
-        pills_y = y
-        cursor_x = x
-        pill_height = 24
-        pill_gap = 6
+        self.carousel_prev_rect = pygame.Rect(x, y, arrow_w, carousel_h)
+        self.carousel_next_rect = pygame.Rect(x + width - arrow_w, y, arrow_w, carousel_h)
+        carousel_box = pygame.Rect(x + arrow_w + 4, y, width - (arrow_w * 2) - 8, carousel_h)
 
-        for algorithm in self.algorithms:
+        mouse_pos = pygame.mouse.get_pos()
+        prev_hover = self.carousel_prev_rect.collidepoint(mouse_pos)
+        next_hover = self.carousel_next_rect.collidepoint(mouse_pos)
 
-            label_surface = SMALL_FONT.render(
-                algorithm.key,
-                True,
-                TEXT
-            )
+        # Draw left arrow button
+        pygame.draw.rect(screen, BUTTON_HOVER if prev_hover else BUTTON, self.carousel_prev_rect, border_radius=8)
+        pygame.draw.rect(screen, GRID_LINE, self.carousel_prev_rect, width=1, border_radius=8)
+        arrow_left = SMALL_FONT.render("<", True, TEXT)
+        screen.blit(arrow_left, arrow_left.get_rect(center=self.carousel_prev_rect.center))
 
-            pill_width = label_surface.get_width() + 10
+        # Draw right arrow button
+        pygame.draw.rect(screen, BUTTON_HOVER if next_hover else BUTTON, self.carousel_next_rect, border_radius=8)
+        pygame.draw.rect(screen, GRID_LINE, self.carousel_next_rect, width=1, border_radius=8)
+        arrow_right = SMALL_FONT.render(">", True, TEXT)
+        screen.blit(arrow_right, arrow_right.get_rect(center=self.carousel_next_rect.center))
 
-            if cursor_x + pill_width > x + width and cursor_x > x:
-                cursor_x = x
-                pills_y += pill_height + pill_gap
+        # Draw center box
+        pygame.draw.rect(screen, BUTTON, carousel_box, border_radius=8)
+        pygame.draw.rect(screen, GRID_LINE, carousel_box, width=1, border_radius=8)
 
-            pill_rect = pygame.Rect(
-                cursor_x,
-                pills_y,
-                pill_width,
-                pill_height
-            )
+        name_text = self.selected_algorithm.label if self.selected_algorithm else "Select Algorithm"
+        name_surf = SMALL_FONT.render(name_text, True, ACCENT)
+        screen.blit(name_surf, name_surf.get_rect(center=carousel_box.center))
 
-            self.algorithm_pills.append(
-                (algorithm, pill_rect)
-            )
+        y += carousel_h + 8
 
-            selected = (
-                algorithm is self.selected_algorithm
-            )
-
-            fill = ACCENT if selected else BUTTON
-            text_color = (20, 22, 28) if selected else TEXT
-
-            pygame.draw.rect(
-                screen,
-                fill,
-                pill_rect,
-                border_radius=12
-            )
-
-            screen.blit(
-                SMALL_FONT.render(
-                    algorithm.key,
-                    True,
-                    text_color
-                ),
-                label_surface.get_rect(center=pill_rect.center)
-            )
-
-            cursor_x += pill_width + pill_gap
-
-        y = pills_y + pill_height + 6
-
-        # "[Tab] cycle" hint beneath the pills.
+        # "[Tab] cycle" hint beneath carousel.
         if len(self.algorithms) > 1:
             hint = SMALL_FONT.render(
                 "[Tab] cycle",
@@ -1466,7 +1458,7 @@ class Application:
             screen.blit(hint, (x, y))
             y += 16
 
-        y += 6
+        y += 4
 
         algorithm = self.selected_algorithm
 
@@ -1832,6 +1824,12 @@ class Application:
             if hasattr(self, 'theme_button_rect') and self.theme_button_rect.collidepoint(event.pos):
                 self.toggle_theme()
                 return
+            if hasattr(self, 'carousel_prev_rect') and self.carousel_prev_rect.collidepoint(event.pos):
+                self.cycle_algorithm(-1)
+                return
+            if hasattr(self, 'carousel_next_rect') and self.carousel_next_rect.collidepoint(event.pos):
+                self.cycle_algorithm(1)
+                return
 
         if event.type == pygame.VIDEORESIZE:
 
@@ -1920,17 +1918,7 @@ class Application:
                     pygame.event.Event(pygame.QUIT)
                 )
 
-        # Algorithm selector pills
-        if (
-            event.type == pygame.MOUSEBUTTONDOWN
-            and event.button == 1
-        ):
 
-            for algorithm, rect in self.algorithm_pills:
-
-                if rect.collidepoint(event.pos):
-                    self.select_algorithm(algorithm)
-                    break
 
         # Mouse
         if event.type == pygame.MOUSEBUTTONDOWN:
