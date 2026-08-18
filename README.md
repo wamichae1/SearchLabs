@@ -6,7 +6,7 @@ SearchLabs is an interactive, real-time pathfinding algorithm visualizer built w
 
 ## Key Features
 
-- **Multiple Algorithms**: Compare BFS, DFS, Dijkstra, A*, and Greedy Best-First Search side-by-side.
+- **Multiple Algorithms**: Compare BFS, DFS, Dijkstra, A*, Greedy Best-First Search, and more side-by-side.
 - **Braided Multi-Path Mazes**: Generate mazes with multiple alternative paths and loops (avoiding single-solution bottlenecks so sub-optimal algorithms like DFS and Greedy can take different routes).
 - **Weighted Terrain (1–5)**: Paint terrain weights (2–5) with blue gradient shading and clear center-rendered numbers. Dijkstra, A*, and Greedy factor terrain weights into path cost calculations.
 - **Dark & Light Modes**: Instantly toggle between Dark and Light themes via the header icon button.

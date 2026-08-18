@@ -179,6 +179,8 @@ class SearchVisualizer:
         self.nodes_explored = 0
         self.nodes_discovered = 0
         self.path_length = 0
+        self.path_cost = None
+        self._current_path_cells = []
 
         self.start_time = None
         self.elapsed_time = 0.0
@@ -198,6 +200,8 @@ class SearchVisualizer:
         self.nodes_explored = 0
         self.nodes_discovered = 0
         self.path_length = 0
+        self.path_cost = None
+        self._current_path_cells = []
 
         self.start_time = None
         self.elapsed_time = 0.0
@@ -229,6 +233,8 @@ class SearchVisualizer:
         self.nodes_explored = 0
         self.nodes_discovered = 0
         self.path_length = 0
+        self.path_cost = None
+        self._current_path_cells = []
 
         self.start_time = time.perf_counter()
         self.elapsed_time = 0.0
@@ -335,6 +341,9 @@ class SearchVisualizer:
                 cell.state = CellState.PATH
 
             self.path_length += 1
+            if not hasattr(self, '_current_path_cells') or self._current_path_cells is None:
+                self._current_path_cells = []
+            self._current_path_cells.append((event.row, event.col))
 
         elif isinstance(event, Finished):
 
@@ -352,9 +361,18 @@ class SearchVisualizer:
             self.running = False
             self.finished = True
             self.found = event.found
+            self.path_cost = getattr(event, 'cost', None)
+
+            if self.found and self.path_cost is None and hasattr(self, '_current_path_cells'):
+                self.path_cost = sum(
+                    self.grid.get(r, c).weight
+                    for r, c in self._current_path_cells
+                    if self.grid.get(r, c) is not None
+                )
 
             if not event.found:
                 self.path_length = 0
+                self.path_cost = None
 
             self.elapsed_time = (
                 time.perf_counter()
@@ -376,6 +394,11 @@ class SearchVisualizer:
 
         if self.finished:
             if self.found:
+                if self.path_cost is not None:
+                    return (
+                        f"Path found: {self.path_length} nodes | Cost: {self.path_cost:g}",
+                        START
+                    )
                 return (
                     f"Path found: {self.path_length} nodes",
                     START
@@ -1171,19 +1194,20 @@ class Application:
     def cell_color(self, cell):
 
         if cell.state == CellState.EMPTY:
-            if cell.weight == 1:
+            if cell.weight == 0:
                 return GRID_BACKGROUND
             if self.dark_mode:
                 shades = {
-                    2: (50, 90, 150),
-                    3: (65, 110, 185),
-                    4: (80, 130, 215),
-                    5: (95, 150, 245)
+                    1: (95, 150, 245),
+                    2: (75, 120, 195),
+                    3: (55, 95, 155),
+                    4: (42, 70, 115),
+                    5: (30, 50, 80)
                 }
                 return shades.get(cell.weight, (50, 90, 150))
             else:
-                base_r, base_g, base_b = 210, 228, 252
-                tint_step = (cell.weight - 2) * 16
+                base_r, base_g, base_b = 220, 235, 255
+                tint_step = (cell.weight - 1) * 15
                 return (max(0, base_r - tint_step), max(0, base_g - tint_step), base_b)
 
         return {
@@ -1221,7 +1245,7 @@ class Application:
                     rect
                 )
 
-                if cell.state == CellState.EMPTY and cell.weight > 1:
+                if cell.state == CellState.EMPTY and cell.weight > 0:
                     text_col = (230, 235, 245) if self.dark_mode else (40, 60, 90)
                     weight_surf = SMALL_FONT.render(str(cell.weight), True, text_col)
                     if rect.width > 14 and rect.height > 14:
