@@ -26,7 +26,7 @@ pygame.init()
 # ============================================================
 
 INITIAL_WIDTH = 1280
-INITIAL_HEIGHT = 740
+INITIAL_HEIGHT = 680
 
 MIN_WINDOW_WIDTH = 1280
 MIN_WINDOW_HEIGHT = 680
