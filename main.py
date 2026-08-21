@@ -1230,6 +1230,10 @@ class Application:
             grid
         )
 
+        # Show weights only if the cell size is consistently large enough (width/height > 14 pixels).
+        # This avoids partially hidden numbers due to rounding/alignment issues on smaller screen layouts.
+        show_weights = (grid.width // self.grid.size) > 14
+
         # Draw cells.
         for row in range(self.grid.size):
 
@@ -1245,14 +1249,13 @@ class Application:
                     rect
                 )
 
-                if cell.state == CellState.EMPTY and cell.weight > 0:
+                if show_weights and cell.state == CellState.EMPTY and cell.weight > 0:
                     text_col = (230, 235, 245) if self.dark_mode else (40, 60, 90)
                     weight_surf = SMALL_FONT.render(str(cell.weight), True, text_col)
-                    if rect.width > 14 and rect.height > 14:
-                        screen.blit(
-                            weight_surf,
-                            weight_surf.get_rect(center=rect.center)
-                        )
+                    screen.blit(
+                        weight_surf,
+                        weight_surf.get_rect(center=rect.center)
+                    )
 
         # Current-node highlight ring (only while active).
         if self.visualizer.running and self.visualizer.current:
@@ -1270,26 +1273,31 @@ class Application:
         # Draw grid lines as complete boundaries, once.
         for index in range(self.grid.size + 1):
 
-            x = self._grid_boundary(grid.left, grid.width, index)
+            # Horizontal line
+            start_x = grid.left
+            end_x = grid.right
             y = self._grid_boundary(grid.top, grid.height, index)
 
             pygame.draw.line(
                 screen,
                 GRID_LINE,
-                (x, grid.top),
-                (x, grid.bottom)
+                (start_x, y),
+                (end_x, y),
+                1
             )
+
+            # Vertical line
+            start_y = grid.top
+            end_y = grid.bottom
+            x = self._grid_boundary(grid.left, grid.width, index)
 
             pygame.draw.line(
                 screen,
                 GRID_LINE,
-                (grid.left, y),
-                (grid.right, y)
+                (x, start_y),
+                (x, end_y),
+                1
             )
-
-    # ========================================================
-    # LEGEND STRIP (under the grid)
-    # ========================================================
 
     def draw_legend_strip(self):
 
