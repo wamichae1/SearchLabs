@@ -23,7 +23,7 @@ def greedy(grid, start, goal):
 
     while frontier:
 
-        priority, current = heapq.heappop(frontier)
+        current = heapq.heappop(frontier)[1]
 
         # Announce the node we are expanding now.
         yield Current(current[0], current[1])

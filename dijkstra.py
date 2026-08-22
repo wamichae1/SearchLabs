@@ -46,7 +46,8 @@ def dijkstra(grid, start, goal):
 
             position = (neighbor.row, neighbor.col)
 
-            new_cost = cost_so_far[current] + neighbor.weight
+            #Add one for the cost of moving
+            new_cost = cost_so_far[current] + 1 + neighbor.weight
 
             # Walls are not traversable.
             if neighbor.state == CellState.WALL:

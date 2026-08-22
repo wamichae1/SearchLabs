@@ -26,7 +26,7 @@ pygame.init()
 # ============================================================
 
 INITIAL_WIDTH = 1280
-INITIAL_HEIGHT = 680
+INITIAL_HEIGHT = 700
 
 MIN_WINDOW_WIDTH = 1280
 MIN_WINDOW_HEIGHT = 680
@@ -180,6 +180,8 @@ class SearchVisualizer:
         self.nodes_discovered = 0
         self.path_length = 0
         self.path_cost = None
+        self.move_cost = None
+        self.weight_cost = None
         self._current_path_cells = []
 
         self.start_time = None
@@ -201,6 +203,8 @@ class SearchVisualizer:
         self.nodes_discovered = 0
         self.path_length = 0
         self.path_cost = None
+        self.move_cost = None
+        self.weight_cost = None
         self._current_path_cells = []
 
         self.start_time = None
@@ -234,6 +238,8 @@ class SearchVisualizer:
         self.nodes_discovered = 0
         self.path_length = 0
         self.path_cost = None
+        self.move_cost = None
+        self.weight_cost = None
         self._current_path_cells = []
 
         self.start_time = time.perf_counter()
@@ -364,11 +370,18 @@ class SearchVisualizer:
             self.path_cost = getattr(event, 'cost', None)
 
             if self.found and self.path_cost is None and hasattr(self, '_current_path_cells'):
-                self.path_cost = sum(
-                    self.grid.get(r, c).weight
-                    for r, c in self._current_path_cells
-                    if self.grid.get(r, c) is not None
-                )
+                path_cells = self._current_path_cells
+                if len(path_cells) > 1:
+                    self.move_cost = len(path_cells) - 1
+                    self.weight_cost = sum(
+                        self.grid.get(r, c).weight
+                        for r, c in path_cells[1:]
+                        if self.grid.get(r, c) is not None
+                    )
+                else:
+                    self.move_cost = 0
+                    self.weight_cost = 0
+                self.path_cost = self.move_cost + self.weight_cost
 
             if not event.found:
                 self.path_length = 0
@@ -1592,6 +1605,14 @@ class Application:
             ("Path length", str(self.visualizer.path_length)),
             ("Runtime", f"{elapsed * 1000:.2f} ms")
         ]
+
+        if (
+            self.visualizer.finished
+            and self.visualizer.found
+            and getattr(self.visualizer, "move_cost", None) is not None
+        ):
+            stats.append(("Move Cost", f"{self.visualizer.move_cost:g}"))
+            stats.append(("Weight Cost", f"{self.visualizer.weight_cost:g}"))
 
         for index, (label, value) in enumerate(stats):
 
