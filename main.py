@@ -11,13 +11,15 @@ from grid import (
     Finished,
     Grid,
 )
-from bfs import bfs
-from dfs import dfs
-from dijkstra import dijkstra
-from astar import astar
-from greedy import greedy
-from bidirectional import bidirectional
-from thetastar import thetastar
+from algorithms.standard.bfs import bfs
+from algorithms.standard.dfs import dfs
+from algorithms.standard.dijkstra import dijkstra
+from algorithms.standard.astar import astar
+from algorithms.standard.greedy import greedy
+from algorithms.standard.thetastar import thetastar
+from algorithms.bidirectional.bidirectional_bfs import bidirectional_bfs
+from algorithms.bidirectional.bidirectional_dijkstra import bidirectional_dijkstra
+from algorithms.bidirectional.bidirectional_astar import bidirectional_astar
 
 pygame.init()
 
@@ -397,6 +399,9 @@ class SearchVisualizer:
         if self.not_implemented:
             return "Not implemented", MUTED_TEXT
 
+        if self.algorithm is None:
+            return "No algorithm selected", MUTED_TEXT
+
         if self.generator is None:
             if (
                 self.grid.start is None
@@ -637,71 +642,95 @@ class Application:
 
         self.visualizer = SearchVisualizer(self.grid)
 
-        self.algorithms = [
-            Algorithm(
-                "BFS",
-                "Breadth-First Search",
-                bfs,
-                "Explores in concentric rings; nearest first.",
-                "Data structure: Queue (FIFO)",
-                "O(V + E) time   |   O(V) space",
-                "Optimal: Yes (unweighted)"
-            ),
-            Algorithm(
-                "DFS",
-                "Depth-First Search",
-                dfs,
-                "Plunges down one branch, then backtracks.",
-                "Data structure: Stack (LIFO)",
-                "O(V + E) time   |   O(V) space",
-                "Optimal: No"
-            ),
-            Algorithm(
-                "Dijkstra",
-                "Dijkstra's Algorithm",
-                dijkstra,
-                "Expands the lowest-cost node first.",
-                "Data structure: Priority queue (min-heap)",
-                "O((V + E) log V) time   |   O(V) space",
-                "Optimal: Yes"
-            ),
-            Algorithm(
-                "A*",
-                "A* Search",
-                astar,
-                "Lowest f = g + h first; h guides to goal.",
-                "Data structure: Priority queue (min-heap)",
-                "O((V + E) log V) time   |   O(V) space",
-                "Optimal: Yes (admissible h)"
-            ),
-            Algorithm(
-                "Greedy",
-                "Greedy Best-First",
-                greedy,
-                "Lowest heuristic h first; races to goal.",
-                "Data structure: Priority queue (min-heap)",
-                "O((V + E) log V) time   |   O(V) space",
-                "Optimal: No"
-            ),
-            Algorithm(
-                "BI",
-                "Bidirectional Search",
-                bidirectional,
-                "Searches simultaneously from start and goal.",
-                "Data structure: Two Queues / Bidirectional",
-                "O(b^(d/2)) time   |   O(b^(d/2)) space",
-                "Optimal: Yes (unweighted)"
-            ),
-            Algorithm(
-                "TH",
-                "Theta* Search",
-                thetastar,
-                "Any-angle pathfinding using line-of-sight.",
-                "Data structure: Priority Queue (A* variant)",
-                "O(V log V) time   |   O(V) space",
-                "Optimal: Any-angle shortest path"
-            )
-        ]
+        self.algorithms_by_category = {
+            "Standard": [
+                Algorithm(
+                    "BFS",
+                    "Breadth-First Search",
+                    bfs,
+                    "Explores in concentric rings; nearest first.",
+                    "Data structure: Queue (FIFO)",
+                    "O(V + E) time   |   O(V) space",
+                    "Optimal: Yes (unweighted)"
+                ),
+                Algorithm(
+                    "DFS",
+                    "Depth-First Search",
+                    dfs,
+                    "Plunges down one branch, then backtracks.",
+                    "Data structure: Stack (LIFO)",
+                    "O(V + E) time   |   O(V) space",
+                    "Optimal: No"
+                ),
+                Algorithm(
+                    "Dijkstra",
+                    "Dijkstra's Algorithm",
+                    dijkstra,
+                    "Expands the lowest-cost node first.",
+                    "Data structure: Priority queue (min-heap)",
+                    "O((V + E) log V) time   |   O(V) space",
+                    "Optimal: Yes"
+                ),
+                Algorithm(
+                    "A*",
+                    "A* Search",
+                    astar,
+                    "Lowest f = g + h first; h guides to goal.",
+                    "Data structure: Priority queue (min-heap)",
+                    "O((V + E) log V) time   |   O(V) space",
+                    "Optimal: Yes (admissible h)"
+                ),
+                Algorithm(
+                    "Greedy",
+                    "Greedy Best-First",
+                    greedy,
+                    "Lowest heuristic h first; races to goal.",
+                    "Data structure: Priority queue (min-heap)",
+                    "O((V + E) log V) time   |   O(V) space",
+                    "Optimal: No"
+                ),
+                Algorithm(
+                    "TH",
+                    "Theta* Search",
+                    thetastar,
+                    "Any-angle pathfinding using line-of-sight.",
+                    "Data structure: Priority Queue (A* variant)",
+                    "O(V log V) time   |   O(V) space",
+                    "Optimal: Any-angle shortest path"
+                )
+            ],
+            "Bidirectional": [
+                Algorithm(
+                    "BI-BFS",
+                    "Bidirectional BFS",
+                    bidirectional_bfs,
+                    "Two frontier searches meet in the middle.",
+                    "Scaffold: implementation pending",
+                    "TBD",
+                    "TBD"
+                ),
+                Algorithm(
+                    "BI-Dijkstra",
+                    "Bidirectional Dijkstra",
+                    bidirectional_dijkstra,
+                    "Two weighted frontiers meet optimally.",
+                    "Scaffold: implementation pending",
+                    "TBD",
+                    "TBD"
+                ),
+                Algorithm(
+                    "BI-A*",
+                    "Bidirectional A*",
+                    bidirectional_astar,
+                    "Two heuristic frontiers meet optimally.",
+                    "Scaffold: implementation pending",
+                    "TBD",
+                    "TBD"
+                )
+            ]
+        }
+
+        self.current_category = "Standard"
 
         self.selected_algorithm = (
             self.algorithms[0]
@@ -744,6 +773,7 @@ class Application:
         ]
 
         self.algorithm_pills = []
+        self.category_tab_rects = {}
 
         self._layout_cache_key = None
         self._layout = None
@@ -759,8 +789,35 @@ class Application:
         self.toast_set_time = time.perf_counter()
 
     # ========================================================
-    # ALGORITHM SELECTION
+    # CATEGORY & ALGORITHM SELECTION
     # ========================================================
+
+    @property
+    def algorithms(self):
+        """Algorithms available in the currently selected
+        category."""
+        return self.algorithms_by_category.get(self.current_category, [])
+
+    def select_category(self, category):
+        """Switch the active algorithm category. The Bidirectional
+        category starts empty - no search behavior is simulated so
+        that algorithms can be added later as real implementations."""
+
+        if category == self.current_category:
+            return
+
+        self.current_category = category
+
+        algorithms = self.algorithms
+
+        self.selected_algorithm = (
+            algorithms[0] if algorithms else None
+        )
+
+        self.visualizer.algorithm = self.selected_algorithm
+        self.visualizer.reset()
+
+        self.set_toast(f"Category: {category}", ACCENT)
 
     def select_algorithm(self, algorithm):
 
@@ -894,6 +951,10 @@ class Application:
     def run_algorithm(self):
 
         v = self.visualizer
+
+        if self.selected_algorithm is None:
+            self.set_toast("Select an algorithm", GOAL)
+            return
 
         if not self.check_endpoints():
             return
@@ -1196,6 +1257,33 @@ class Application:
                     1.5
                 )         
 
+        # Category tabs: Standard | Bidirectional.
+        # Placed beside the Light/Dark theme toggle, using the
+        # otherwise-unused horizontal space in the header.
+        self.category_tab_rects = {}
+        category_tabs = ["Standard", "Bidirectional"]
+        tab_height = 26
+        tab_y = toggle_y - tab_height // 2
+        tab_x = toggle_x + toggle_radius + 16
+
+        for category in category_tabs:
+
+            selected = category == self.current_category
+
+            label_color = BG if selected else TEXT
+            tab_text = SMALL_FONT.render(category, True, label_color)
+
+            tab_w = tab_text.get_width() + 18
+            tab_rect = pygame.Rect(round(tab_x), tab_y, tab_w, tab_height)
+            self.category_tab_rects[category] = tab_rect
+
+            tab_bg = ACCENT if selected else BUTTON
+            pygame.draw.rect(screen, tab_bg, tab_rect, border_radius=8)
+            pygame.draw.rect(screen, GRID_LINE, tab_rect, width=1, border_radius=8)
+            screen.blit(tab_text, tab_text.get_rect(center=tab_rect.center))
+
+            tab_x = tab_rect.right + 8
+
         subtitle = SMALL_FONT.render(
             "Interactive visual search algorithm laboratory",
             True,
@@ -1455,6 +1543,38 @@ class Application:
     def draw_algorithm_section(self, x, width, start_y):
 
         y = start_y
+
+        if not self.algorithms:
+            # Empty category (e.g. Bidirectional before algorithms
+            # are implemented). Show an empty state, NOT a fake run.
+            self.draw_section_title("ALGORITHM", x, y)
+            y += SECTION_TITLE_PAD
+
+            name = "No Algorithms Yet"
+            info = [
+                f"No {self.current_category} algorithms have been implemented.",
+                "",
+                "Add a generator module under algorithms/<category>/",
+                "and register it in Application.__init__ to get started.",
+            ]
+
+            screen.blit(
+                FONT.render(name, True, ACCENT),
+                (x, y)
+            )
+            y += 24
+
+            for line in info:
+
+                if line:
+                    screen.blit(
+                        SMALL_FONT.render(line, True, MUTED_TEXT),
+                        (x, y)
+                    )
+
+                y += LINE_GAP
+
+            return y
 
         self.draw_section_title("ALGORITHM", x, y)
         y += SECTION_TITLE_PAD
@@ -1877,6 +1997,10 @@ class Application:
             if hasattr(self, 'theme_button_rect') and self.theme_button_rect.collidepoint(event.pos):
                 self.toggle_theme()
                 return
+            for category, rect in getattr(self, 'category_tab_rects', {}).items():
+                if rect.collidepoint(event.pos):
+                    self.select_category(category)
+                    return
             if hasattr(self, 'carousel_prev_rect') and self.carousel_prev_rect.collidepoint(event.pos):
                 self.cycle_algorithm(-1)
                 return

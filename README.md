@@ -107,21 +107,48 @@ def my_algorithm(grid, start, goal):
     yield Finished(found=False)
 ```
 
+### 2. File Layout
+Algorithms are grouped by category so the project stays easy to extend. Move your algorithm file into the matching folder and import it from there:
+
+```text
+algorithms/
+    standard/
+        bfs.py
+        dfs.py
+        greedy.py
+        dijkstra.py
+        astar.py
+        thetastar.py        # optional research algorithm
+    bidirectional/           # add Bidirectional BFS/Dijkstra here later
+```
+
+Each module is a pure generator (no `pygame` imports) that yields the event protocol from `grid.py`.
+
 ### 3. Registering Your Algorithm in `main.py`
-To add your algorithm to the UI selector in `main.py`:
-1. Import your algorithm function at the top of `main.py`:
+Algorithms are organized into **categories/tabs** in the top navigation bar (`Standard` and `Bidirectional`):
+- `Standard` holds the classic searches (BFS, DFS, Dijkstra, A*, Greedy, ...).
+- `Bidirectional` is a scaffold category ready for your bidirectional searches.
+
+To add a new algorithm to a category:
+1. Place its generator module under the matching `algorithms/<category>/` folder and import it at the top of `main.py`:
    ```python
-   from my_algorithm import my_algorithm
+   from algorithms.standard.my_algorithm import my_algorithm   # or algorithms.bidirectional...
    ```
-2. Register it in `self.algorithms` list inside `Application.__init__`:
+2. Register it in the matching list of `self.algorithms_by_category` inside `Application.__init__`:
    ```python
-   Algorithm(
-       "MY",                  # button label
-       "My Custom Algorithm", # Full title
-       my_algorithm,          # Generator function reference
-       "Description of strategy...",
-       "Data structure...",
-       "Time/Space Complexity...",
-       "Optimal: Yes/No"
-   )
+   "My Category": [
+       ...
+       Algorithm(
+           "MY",                  # button label
+           "My Custom Algorithm", # Full title
+           my_algorithm,          # Generator function reference
+           "Description of strategy...",
+           "Data structure...",
+           "Time/Space Complexity...",
+           "Optimal: Yes/No"
+       ),
+   ]
    ```
+3. Pick the category tab from the top navigation bar to select it in the carousel.
+
+The `Bidirectional` category starts empty on purpose - selecting it shows an empty state so you can implement the algorithms yourself without any placeholder search behavior.
