@@ -1,37 +1,13 @@
-﻿"""Bidirectional BFS scaffolding.
+﻿from collections import deque
 
-This module is intentionally a stub. The algorithm has NOT been
-implemented yet, so it must NOT be registered in the UI until the
-generator below yields real events.
+from grid import (
+    CellState,
+    Current,
+    Discover,
+    PathNode,
+    Finished,
+)
 
-To implement Bidirectional BFS:
-
-* Keep this file free of ``pygame`` imports - algorithms communicate
-  with the visualizer only through the event contract in ``grid.py``.
-* ``grid.neighbors(row, col)`` returns in-bounds neighbor cells but
-  does NOT skip walls; filter ``CellState.WALL`` yourself.
-* A bidirectional search expands two frontiers (one from ``start``,
-  one from ``goal``) until they meet, then reconstructs a single path.
-  You will need two ``came_from`` maps (one per direction), a meeting
-  cell, and shared visited sets so expansions can be announced with the
-  existing events:
-
-      from grid import Current, Discover, PathNode, Finished
-
-  * ``Current(row, col)``   - cell being expanded right now.
-  * ``Discover(row, col)``  - cell added to a frontier.
-  * ``PathNode(row, col)``  - cell on the final reconstructed path.
-  * ``Finished(found=bool)``- search complete.
-
-The visualizer calls ``bidirectional_bfs(grid, start, goal)`` and
-steps its returned generator one event at a time, so the function
-above must be a generator that yields the events above.
-
-The ``NotImplementedError`` below lets the scaffold be imported safely
-without pretending the search works.
-"""
-
-from grid import Finished
 
 
 def bidirectional_bfs(grid, start, goal):
@@ -45,10 +21,92 @@ def bidirectional_bfs(grid, start, goal):
 
     NOTE: This is a stub. Replace the body with a real generator.
     """
+    def reconstruct_path(meeting_point, came_from_start, came_from_goal):          
+        path = []
+        node = meeting_point
+
+          
+        while node is not None:
+            path.append(node)
+            node = came_from_start[node]
+
+        path.reverse()
+
+        node = came_from_goal[meeting_point]
+
+        while node is not None:
+            path.append(node)
+            node = came_from_goal[node]     
+
+        return path
+
+        
+
     if start is None or goal is None:
         yield Finished(found=False)
         return
 
-    raise NotImplementedError(
-        "Bidirectional BFS is a scaffold - implement the generator body."
-    )
+
+    came_from_start = {start: None}
+    came_from_goal = {goal: None}
+    frontier_start = deque([start])
+    frontier_goal = deque([goal])
+
+    while frontier_start and frontier_goal:
+
+        current_start = frontier_start.popleft()
+        current_goal = frontier_goal.popleft()
+
+        # Announce the node we are expanding now.
+        yield Current(current_start[0], current_start[1])
+        yield Current(current_goal[0], current_goal[1])
+        # Check if Node is in came_from_start or came_from_goal
+
+        for neighbor in grid.neighbors(current_start[0], current_start[1]):
+
+            position = (neighbor.row, neighbor.col)
+
+            # Walls are not traversable.
+            if neighbor.state == CellState.WALL:
+                continue
+            
+            if position not in came_from_start:
+                came_from_start[position] = current_start
+                frontier_start.append(position)
+                yield Discover(position[0], position[1])
+
+            if position in came_from_goal:
+                meeting_point = position
+                path = reconstruct_path(meeting_point, came_from_start, came_from_goal)
+
+                for cell in path:
+                  yield PathNode(cell[0], cell[1])
+
+                yield Finished(found=True)
+                return
+            
+        for neighbor in grid.neighbors(current_goal[0], current_goal[1]):
+
+            position = (neighbor.row, neighbor.col)
+
+            # Walls are not traversable.
+            if neighbor.state == CellState.WALL:
+                continue
+            
+            if position not in came_from_goal:
+                came_from_goal[position] = current_goal
+                frontier_goal.append(position)
+                yield Discover(position[0], position[1])
+
+            if position in came_from_start:
+                meeting_point = position
+                path = reconstruct_path(meeting_point, came_from_start, came_from_goal)
+
+                for cell in path:
+                  yield PathNode(cell[0], cell[1])
+
+                yield Finished(found=True)
+                return
+
+    # Frontier exhausted without reaching the goal.
+    yield Finished(found=False)
