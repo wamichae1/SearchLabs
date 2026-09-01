@@ -119,7 +119,7 @@ algorithms/
         dijkstra.py
         astar.py
         thetastar.py        # optional research algorithm
-    bidirectional/           # add Bidirectional BFS/Dijkstra here later
+    bidirectional/           # add Bidirectional BFS/Dijkstra/Astar here later
 ```
 
 Each module is a pure generator (no `pygame` imports) that yields the event protocol from `grid.py`.
