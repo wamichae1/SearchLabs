@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-
+import asyncio
 import pygame
 
 from grid import (
@@ -11,6 +11,7 @@ from grid import (
     Finished,
     Grid,
 )
+
 from algorithms.standard.bfs import bfs
 from algorithms.standard.dfs import dfs
 from algorithms.standard.dijkstra import dijkstra
@@ -2182,7 +2183,7 @@ class Application:
 # MAIN
 # ============================================================
 
-def main():
+async def main():
 
     app = Application()
 
@@ -2203,8 +2204,10 @@ def main():
 
         clock.tick(FPS)
 
+        await asyncio.sleep(0)
+
     pygame.quit()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
